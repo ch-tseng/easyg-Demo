@@ -42,7 +42,7 @@ class ILI9341:
 
     def displayImg(self, image):
         image = PIL.Image.fromarray(image)
-        #image = image.rotate(self.LCD_Rotate).resize((self.LCD_size_w, self.LCD_size_h))
+        image = image.rotate(self.LCD_Rotate).resize((self.LCD_size_w, self.LCD_size_h))
         #image = image.transpose(Image.FLIP_LEFT_RIGHT)
         self.disp.display(image)
 

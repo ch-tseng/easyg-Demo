@@ -1,13 +1,17 @@
 import time, sys
 import serial
-#import cv2
+import cv2
 #import imutils
-#import numpy as np
+import numpy as np
 from libraryCH.device.lcd import ILI9341
 
 distMax = 63
 distMin = 19
+# if waitNextTimer=0 , delay for two-gestures will be disabled.
+waitNextTimer = 1.0
+
 ratio = (240/distMax) * 1.0
+bgEasyG = True
 
 Serial = serial.Serial("/dev/ttyS0", 9600, timeout= 0.5 )
 
@@ -29,63 +33,96 @@ def displayHold(vData):
     resizeR = int( vData * ratio)
     if(resizeR>240): resizeR=240
 
-    #lcd.displayClear()
-    print ("vData:{}, Ratio:{}, Resize:{}".format(vData,ratio,resizeR))
-    #imgResize = imutils.resize(imgHold, width = resizeR)
-    #lcd.displayImg( imgResize )
     lcd.drawRectangle(resizeR)
-    #time.sleep(0.06)
-    #Serial.flushInput()
 
-lcd.displayImgfile("easyg.jpg")
+def singleG(vData):
+    if(vData==1):
+        lcd.displayImgfile("right.jpg")
+        #print("Right")
+    elif(vData==4):
+        lcd.displayImgfile("left.jpg")
+        #print("Left")
+    elif(vData==2):
+        lcd.displayImgfile("down.jpg")
+        #print("Down")
+    elif(vData==8):
+        lcd.displayImgfile("up.jpg")
+        #print("Up")
+    elif(vData==48):
+        lcd.displayImgfile("question.jpg")
+        #print("??")
 
-while True:
-    for line in Serial.read():
-        vData = int(ByteToHex(line),16)
-        print(vData)
+def distanceG(vData):
+    global distMax, distMin
+    print(vData)
 
-        if(vData==1):
-            lcd.displayImgfile("right.jpg")
-            print("Right")
+    lastGesture = 0
+    while ((vData<=distMax and vData>=distMin) or vData==192):
+        if(vData<=distMax and vData>=distMin):
+            displayHold(vData)
 
-        if(vData==4):
-            lcd.displayImgfile("left.jpg")
-            print("Left")
-
-        if(vData==2):
-            lcd.displayImgfile("down.jpg")
-            print("Down")
-
-        if(vData==8):
-            lcd.displayImgfile("up.jpg")
-            print("Up")
-
-        if(vData==48):
-            lcd.displayImgfile("question.jpg")
-            print("??")
-
-        if(vData==192):
-            #lcd.displayImgfile("hand.jpg")
+        if(Serial.in_waiting>0):
+            line = Serial.read()
             vData = int(ByteToHex(line),16)
             print(vData)
 
-            lastGesture = 0
-            while ((vData<=distMax and vData>=distMin) or vData==192):
-                if(vData<=distMax and vData>=distMin):
-                    displayHold(vData)
+        if(vData==48 and lastGesture==48):
+            break
 
-                if(Serial.in_waiting>0):
-                    line = Serial.read()
-                    #print("Serial read: {} -->HEX: {}".format(line, ByteToHex(line)) )
-                    vData = int(ByteToHex(line),16)
-                    print("last:{}, this:{}".format(lastGesture, vData))
-                #else:
-                #    lcd.displayImgfile("black.jpg")
-                #    vData = 0
-               
-                if(vData==48 and lastGesture==48):
-                    lcd.displayImgfile("black.jpg")
-                    break
+        lastGesture = vData
 
-                lastGesture = vData
+def twiceG(vData1, vData2):
+    if(vData1==1):
+        img1 = cv2.imread("sright.jpg")
+    elif(vData1==4):
+        img1 = cv2.imread("sleft.jpg")
+    elif(vData1==2):
+        img1 = cv2.imread("sdown.jpg")
+    elif(vData1==8):
+        img1 = cv2.imread("sup.jpg")
+    elif(vData1==48):
+        img1 = cv2.imread("squestion.jpg")
 
+    if(vData2==1):
+        img2 = cv2.imread("sright.jpg")
+    elif(vData2==4):
+        img2 = cv2.imread("sleft.jpg")
+    elif(vData2==2):
+        img2 = cv2.imread("sdown.jpg")
+    elif(vData2==8):
+        img2 = cv2.imread("sup.jpg")
+    elif(vData2==48):
+        img2 = cv2.imread("squestion.jpg")
+
+    lcd.displayImg(np.hstack( (img1, img2)) )
+
+lcd.displayImgfile("easyg.jpg")
+lastAccess = time.time()
+
+while True:
+    #for line in Serial.read():
+    if (Serial.inWaiting()>0): 
+        line = Serial.read()
+        vData = int(ByteToHex(line),16)
+        print(vData)
+
+        if(vData==192):
+            distanceG(vData)
+
+        else:
+            time.sleep(waitNextTimer)  
+            if (Serial.inWaiting()>0):
+                line = Serial.read()
+                vData2 = int(ByteToHex(line),16)
+                twiceG(vData, vData2)
+
+            else:
+                singleG(vData)
+
+        lastAccess = time.time()
+        bgEasyG = False
+
+    else:
+        if( bgEasyG==False and (time.time()-lastAccess > 10) ):
+            lcd.displayImgfile("easyg.jpg")
+            bgEasyG = True
