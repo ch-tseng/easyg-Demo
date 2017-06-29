@@ -35,22 +35,21 @@ def displayHold(vData):
 
     lcd.drawRectangle(resizeR)
 
-def singleG(vData):
+def id2jpg(vData):
     if(vData==1):
-        lcd.displayImgfile("right.jpg")
-        #print("Right")
+        return "right.jpg"
     elif(vData==4):
-        lcd.displayImgfile("left.jpg")
-        #print("Left")
+        return "left.jpg"
     elif(vData==2):
-        lcd.displayImgfile("down.jpg")
-        #print("Down")
+        return "down.jpg"
     elif(vData==8):
-        lcd.displayImgfile("up.jpg")
-        #print("Up")
+        return "up.jpg"
     elif(vData==48):
-        lcd.displayImgfile("question.jpg")
-        #print("??")
+        return "question.jpg"
+
+def singleG(vData):
+    fileJPG = id2jpg(vData)
+    lcd.displayImgfile(fileJPG)
 
 def distanceG(vData):
     global distMax, distMin
@@ -72,29 +71,18 @@ def distanceG(vData):
         lastGesture = vData
 
 def twiceG(vData1, vData2):
-    if(vData1==1):
-        img1 = cv2.imread("sright.jpg")
-    elif(vData1==4):
-        img1 = cv2.imread("sleft.jpg")
-    elif(vData1==2):
-        img1 = cv2.imread("sdown.jpg")
-    elif(vData1==8):
-        img1 = cv2.imread("sup.jpg")
-    elif(vData1==48):
-        img1 = cv2.imread("squestion.jpg")
+    jpg1 = cv2.imread("s" + id2jpg(vData1))
+    jpg2 =  cv2.imread("s" + id2jpg(vData2))
 
-    if(vData2==1):
-        img2 = cv2.imread("sright.jpg")
-    elif(vData2==4):
-        img2 = cv2.imread("sleft.jpg")
-    elif(vData2==2):
-        img2 = cv2.imread("sdown.jpg")
-    elif(vData2==8):
-        img2 = cv2.imread("sup.jpg")
-    elif(vData2==48):
-        img2 = cv2.imread("squestion.jpg")
+    lcd.displayImg(np.hstack( (jpg1, jpg2)) )
 
-    lcd.displayImg(np.hstack( (img1, img2)) )
+def threeG(vData1, vData2, vData3):
+    jpg1 =  cv2.imread("ss" + id2jpg(vData1))
+    jpg2 =  cv2.imread("ss" + id2jpg(vData2))
+    jpg3 =  cv2.imread("ss" + id2jpg(vData3))
+
+    lcd.displayImg(np.hstack( (jpg1, jpg2, jpg3) ))
+
 
 lcd.displayImgfile("easyg.jpg")
 lastAccess = time.time()
@@ -103,21 +91,30 @@ while True:
     #for line in Serial.read():
     if (Serial.inWaiting()>0): 
         line = Serial.read()
-        vData = int(ByteToHex(line),16)
-        print(vData)
+        vData1 = int(ByteToHex(line),16)
+        print(vData1)
 
-        if(vData==192):
-            distanceG(vData)
+        if(vData1==192):
+            distanceG(vData1)
 
         else:
             time.sleep(waitNextTimer)  
+
             if (Serial.inWaiting()>0):
+                time.sleep(waitNextTimer)
                 line = Serial.read()
                 vData2 = int(ByteToHex(line),16)
-                twiceG(vData, vData2)
+
+                if (Serial.inWaiting()>0):
+                    line = Serial.read()
+                    vData3 = int(ByteToHex(line),16)
+                    threeG(vData1, vData2, vData3)
+
+                else:
+                    twiceG(vData1, vData2)
 
             else:
-                singleG(vData)
+                singleG(vData1)
 
         lastAccess = time.time()
         bgEasyG = False
